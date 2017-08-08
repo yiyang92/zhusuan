@@ -23,8 +23,7 @@ def vae(observed, n, n_x, n_z, n_particles, is_training):
         normalizer_params = {'is_training': is_training,
                              'updates_collections': None}
         z_mean = tf.zeros([n, n_z])
-        z_logstd = tf.zeros([n, n_z])
-        z = zs.Normal('z', z_mean, z_logstd, n_samples=n_particles,
+        z = zs.Normal('z', z_mean, std=1., n_samples=n_particles,
                       group_event_ndims=1)
         lx_z = layers.fully_connected(
             z, 500, normalizer_fn=layers.batch_norm,
@@ -50,7 +49,7 @@ def q_net(observed, x, n_z, n_particles, is_training):
             normalizer_params=normalizer_params)
         lz_mean = layers.fully_connected(lz_x, n_z, activation_fn=None)
         lz_logstd = layers.fully_connected(lz_x, n_z, activation_fn=None)
-        z = zs.Normal('z', lz_mean, lz_logstd, n_samples=n_particles,
+        z = zs.Normal('z', lz_mean, logstd=lz_logstd, n_samples=n_particles,
                       group_event_ndims=1)
     return variational
 
@@ -74,7 +73,7 @@ if __name__ == "__main__":
     lb_samples = 1
     ll_samples = 1000
     n_planar_flows = 10
-    epoches = 3000
+    epochs = 3000
     batch_size = 100
     iters = x_train.shape[0] // batch_size
     learning_rate = 0.001
@@ -145,7 +144,7 @@ if __name__ == "__main__":
             begin_epoch = int(ckpt_file.split('.')[-2]) + 1
             saver.restore(sess, ckpt_file)
 
-        for epoch in range(begin_epoch, epoches + 1):
+        for epoch in range(begin_epoch, epochs + 1):
             time_epoch = -time.time()
             if epoch % anneal_lr_freq == 0:
                 learning_rate *= anneal_lr_rate

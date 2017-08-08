@@ -9,6 +9,7 @@ from collections import OrderedDict
 import six
 from six.moves import zip
 import tensorflow as tf
+from tensorflow.python.client.session import register_session_run_conversion_functions
 
 from zhusuan.model.utils import Context, TensorArithmeticMixin
 
@@ -186,6 +187,15 @@ class StochasticTensor(TensorArithmeticMixin):
 tf.register_tensor_conversion_function(
     StochasticTensor, StochasticTensor._to_tensor)
 
+# bring support for session.run(StochasticTensor), and for using as keys
+# in feed_dict.
+register_session_run_conversion_functions(
+    StochasticTensor,
+    fetch_function=lambda t: ([t.tensor], lambda val: val[0]),
+    feed_function=lambda t, v: [(t.tensor, v)],
+    feed_function_for_partial_run=lambda t: [t.tensor]
+)
+
 
 class BayesianNet(Context):
     """
@@ -217,7 +227,7 @@ class BayesianNet(Context):
 
         def bayesian_linear_regression(x, alpha, beta):
             with zs.BayesianNet() as model:
-                w = zs.Normal('w', mean=0., logstd=tf.log(alpha)
+                w = zs.Normal('w', mean=0., logstd=tf.log(alpha))
                 y_mean = tf.reduce_sum(tf.expand_dims(w, 0) * x, 1)
                 y = zs.Normal('y', y_mean, tf.log(beta))
             return model
@@ -229,7 +239,7 @@ class BayesianNet(Context):
 
         def bayesian_linear_regression(observed, x, alpha, beta):
             with zs.BayesianNet(observed=observed) as model:
-                w = zs.Normal('w', mean=0., logstd=tf.log(alpha)
+                w = zs.Normal('w', mean=0., logstd=tf.log(alpha))
                 y_mean = tf.reduce_sum(tf.expand_dims(w, 0) * x, 1)
                 y = zs.Normal('y', y_mean, tf.log(beta))
             return model

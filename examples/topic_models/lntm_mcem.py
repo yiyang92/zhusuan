@@ -31,9 +31,10 @@ def lntm(observed, D, K, V, eta_mean, eta_logstd):
     with zs.BayesianNet(observed=observed) as model:
         eta = zs.Normal('eta',
                         tf.tile(tf.expand_dims(eta_mean, 0), [D, 1]),
-                        tf.tile(tf.expand_dims(eta_logstd, 0), [D, 1]),
+                        logstd=tf.tile(tf.expand_dims(eta_logstd, 0), [D, 1]),
                         group_event_ndims=1)
-        beta = zs.Normal('beta', tf.zeros([K, V]), tf.ones([K, V]) * log_delta,
+        beta = zs.Normal('beta', tf.zeros([K, V]),
+                         logstd=tf.ones([K, V]) * log_delta,
                          group_event_ndims=1)
     return model
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     num_e_steps = 5
     hmc = zs.HMC(step_size=1e-3, n_leapfrogs=20, adapt_step_size=True,
                  target_acceptance_rate=0.6)
-    epoches = 100
+    epochs = 100
     learning_rate_0 = 1.0
     t0 = 10
 
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
-        for epoch in range(1, epoches + 1):
+        for epoch in range(1, epochs + 1):
             time_epoch = -time.time()
             learning_rate = learning_rate_0 / (t0 + epoch) * t0
             perm = list(range(X_train.shape[0]))
