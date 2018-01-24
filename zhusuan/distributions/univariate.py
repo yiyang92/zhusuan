@@ -82,8 +82,11 @@ class Normal(Distribution):
         self._mean = tf.convert_to_tensor(mean)
         warnings.warn("Normal: The order of arguments logstd/std will change "
                       "to std/logstd in the coming version.", FutureWarning)
-        if (logstd is None) == (std is None):
-            raise ValueError("Either std or logstd should be passed but not "
+        if logstd is None and std is None:
+            raise ValueError("You must specify logstd or std of the normal "
+                             "distribution.")
+        elif (logstd is None) == (std is None):
+            raise ValueError("Either std or logstd should be specified but not "
                              "both of them.")
         elif logstd is None:
             self._std = tf.convert_to_tensor(std)
@@ -222,7 +225,10 @@ class FoldNormal(Distribution):
         warnings.warn("FoldNormal: The order of arguments logstd/std will "
                       "change to std/logstd in the coming version.",
                       FutureWarning)
-        if (logstd is None) == (std is None):
+        if logstd is None and std is None:
+            raise ValueError("You must specify logstd or std of the normal "
+                             "distribution.")
+        elif (logstd is None) == (std is None):
             raise ValueError("Either std or logstd should be passed but not "
                              "both of them.")
         elif logstd is None:
@@ -907,7 +913,7 @@ class Poisson(Distribution):
             random_poisson = tf.random_poisson
         except AttributeError:
             # This algorithm to generate random Poisson-distributed numbers is
-            # given by Kunth [1]
+            # given by Knuth [1]
             # [1]: https://en.wikipedia.org/wiki/
             #      Poisson_distribution#Generating_Poisson-distributed_random_variables
             shape = tf.concat([[n_samples], self.batch_shape], 0)
