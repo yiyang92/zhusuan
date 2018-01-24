@@ -1,18 +1,41 @@
-zhusuan.distributions 
-=============================
+zhusuan\.distributions 
+==============================
 
 .. automodule:: zhusuan.distributions
     :members:
     :undoc-members:
     :show-inheritance:
 
-Submodules
+Base class
 ----------
 
-.. toctree::
+.. automodule:: zhusuan.distributions.base
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
-   zhusuan.distributions.base
-   zhusuan.distributions.multivariate
-   zhusuan.distributions.univariate
-   zhusuan.distributions.utils
+Univariate distributions
+------------------------
 
+.. automodule:: zhusuan.distributions.univariate
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :inherited-members:
+
+Multivariate distributions
+--------------------------
+
+.. automodule:: zhusuan.distributions.multivariate
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :inherited-members:
+
+Distribution utils
+------------------
+
+.. automodule:: zhusuan.distributions.utils
+    :members:
+    :undoc-members:
+    :show-inheritance:

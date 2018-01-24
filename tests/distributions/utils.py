@@ -66,18 +66,20 @@ def test_dtype_2parameter(test_class, Distribution):
     _test_parameter_dtype_raise(tf.int32, tf.int32)
 
 
-def test_dtype_1parameter_discrete(test_class, Distribution):
-    def _test_sample_dtype(result_dtype, dtype):
-        distribution = Distribution([1.], dtype=dtype)
+def test_dtype_1parameter_discrete(test_class, Distribution, prob_only=False):
+    def _test_sample_dtype(input_, result_dtype, dtype):
+        distribution = Distribution(input_, dtype=dtype)
         samples = distribution.sample(2)
         test_class.assertEqual(distribution.dtype, result_dtype)
         test_class.assertEqual(samples.dtype, result_dtype)
 
-    _test_sample_dtype(tf.int32, None)
-    _test_sample_dtype(tf.int16, tf.int16)
-    _test_sample_dtype(tf.int32, tf.int32)
-    _test_sample_dtype(tf.float32, tf.float32)
-    _test_sample_dtype(tf.float64, tf.float64)
+    if not prob_only:
+        for input_ in [[1.], [[2., 3.], [4., 5.]]]:
+            _test_sample_dtype(input_, tf.int32, None)
+            _test_sample_dtype(input_, tf.int16, tf.int16)
+            _test_sample_dtype(input_, tf.int32, tf.int32)
+            _test_sample_dtype(input_, tf.float32, tf.float32)
+            _test_sample_dtype(input_, tf.float64, tf.float64)
 
     def _test_parameter_dtype_raise(param_dtype):
         param = tf.placeholder(param_dtype, [1])
@@ -202,7 +204,7 @@ def test_batch_shape_2parameter_univariate(
             _test_dynamic([2, 3, 5], [3, 2], None)
 
 
-def test_sample_shape_2parameter_univariate(
+def test_2parameter_sample_shape_same(
         test_class, Distribution, make_param1, make_param2):
     def _test_static(param1_shape, param2_shape, n_samples, target_shape):
         param1 = tf.placeholder(tf.float32, param1_shape)
@@ -246,7 +248,7 @@ def test_sample_shape_2parameter_univariate(
             _test_dynamic([2, 3, 5], [2, 1], 1, None)
 
 
-def test_log_prob_shape_2parameter_univariate(
+def test_2parameter_log_prob_shape_same(
         test_class, Distribution, make_param1, make_param2, make_given):
     def _test_static(param1_shape, param2_shape, given_shape, target_shape):
         param1 = tf.placeholder(tf.float32, param1_shape)
@@ -330,8 +332,8 @@ def test_batch_shape_1parameter(
         _test_dynamic([2, 1, 4])
 
 
-def test_sample_shape_1parameter_univariate(
-        test_class, Distribution, make_param):
+def test_1parameter_sample_shape_same(
+        test_class, Distribution, make_param, only_one_sample=False):
     def _test_static(param_shape, n_samples, target_shape):
         param = tf.placeholder(tf.float32, param_shape)
         dist = Distribution(param)
@@ -343,12 +345,14 @@ def test_sample_shape_1parameter_univariate(
 
     _test_static([2, 3], None, [2, 3])
     _test_static([2, 3], 1, [1, 2, 3])
-    _test_static([5], 2, [2, 5])
-    _test_static([None, 2], tf.placeholder(tf.int32, []), [None, None, 2])
+    if not only_one_sample:
+        _test_static([5], 2, [2, 5])
+        _test_static([None, 2], tf.placeholder(tf.int32, []), [None, None, 2])
     _test_static(None, 1, None)
     _test_static(None, None, None)
     _test_static([None, 1, 10], None, [None, 1, 10])
-    _test_static([3, None], 2, [2, 3, None])
+    if not only_one_sample:
+        _test_static([3, None], 2, [2, 3, None])
 
     with test_class.test_session(use_gpu=True):
         def _test_dynamic(param_shape, n_samples, target_shape):
@@ -361,11 +365,12 @@ def test_sample_shape_1parameter_univariate(
                 target_shape)
 
         _test_dynamic([2, 3], 1, [1, 2, 3])
-        _test_dynamic([1, 3], 2, [2, 1, 3])
-        _test_dynamic([2, 1, 5], 3, [3, 2, 1, 5])
+        if not only_one_sample:
+            _test_dynamic([1, 3], 2, [2, 1, 3])
+            _test_dynamic([2, 1, 5], 3, [3, 2, 1, 5])
 
 
-def test_log_prob_shape_1parameter_univariate(
+def test_1parameter_log_prob_shape_same(
         test_class, Distribution, make_param, make_given):
     def _test_static(param_shape, given_shape, target_shape):
         param = tf.placeholder(tf.float32, param_shape)
@@ -408,7 +413,7 @@ def test_log_prob_shape_1parameter_univariate(
             _test_dynamic([2, 3, 5], [1, 2, 1], None)
 
 
-def test_sample_shape_1parameter_multivariate(
+def test_1parameter_sample_shape_one_rank_less(
         test_class, Distribution, make_param):
     def _test_static(param_shape, n_samples, target_shape):
         param = tf.placeholder(tf.float32, param_shape)
@@ -447,7 +452,7 @@ def test_sample_shape_1parameter_multivariate(
         _test_dynamic([2, 1, 5], 3, [3, 2, 1, 5])
 
 
-def test_log_prob_shape_1parameter_multivariate(
+def test_1parameter_log_prob_shape_one_rank_less(
         test_class, Distribution, make_param, make_given):
     def _test_static(param_shape, given_shape, target_shape):
         param = tf.placeholder(tf.float32, param_shape)

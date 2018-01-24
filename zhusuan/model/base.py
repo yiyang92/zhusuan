@@ -9,9 +9,11 @@ from collections import OrderedDict
 import six
 from six.moves import zip
 import tensorflow as tf
-from tensorflow.python.client.session import register_session_run_conversion_functions
+from tensorflow.python.client.session import \
+    register_session_run_conversion_functions
 
-from zhusuan.model.utils import Context, TensorArithmeticMixin
+from zhusuan.model.utils import Context
+from zhusuan.utils import TensorArithmeticMixin
 
 
 __all__ = [
@@ -37,7 +39,7 @@ class StochasticTensor(TensorArithmeticMixin):
 
     .. seealso::
 
-        :doc:`/concepts`
+        :doc:`/tutorials/concepts`
 
     :param name: A string. The name of the `StochasticTensor`. Must be unique
         in the `BayesianNet` context.
@@ -70,6 +72,7 @@ class StochasticTensor(TensorArithmeticMixin):
             self._net._add_stochastic_tensor(self)
         except RuntimeError:
             self._net = None
+        super(StochasticTensor, self).__init__()
 
     @property
     def name(self):
@@ -115,6 +118,9 @@ class StochasticTensor(TensorArithmeticMixin):
                 self._tensor = self.sample(self._n_samples)
         return self._tensor
 
+    def get_shape(self):
+        return self.tensor.get_shape()
+
     def sample(self, n_samples):
         """
         Return samples from this `StochasticTensor`.
@@ -142,36 +148,6 @@ class StochasticTensor(TensorArithmeticMixin):
         :return: A Tensor. The probability density (mass) value.
         """
         return self._distribution.prob(given)
-
-    def __hash__(self):
-        # Necessary to support Python's collection membership operators
-        return id(self)
-
-    def __eq__(self, other):
-        # Necessary to support Python's collection membership operators
-        return id(self) == id(other)
-
-    # disallowed operators
-    def __iter__(self):
-        raise TypeError("StochasticTensor object is not iterable.")
-
-    def __bool__(self):
-        raise TypeError(
-            "Using a `StochasticTensor` as a Python `bool` is not allowed. "
-            "Use `if t is not None:` instead of `if t:` to test if a "
-            "tensor is defined, and use TensorFlow ops such as "
-            "tf.cond to execute subgraphs conditioned on the value of "
-            "a tensor."
-        )
-
-    def __nonzero__(self):
-        raise TypeError(
-            "Using a `StochasticTensor` as a Python `bool` is not allowed. "
-            "Use `if t is not None:` instead of `if t:` to test if a "
-            "tensor is defined, and use TensorFlow ops such as "
-            "tf.cond to execute subgraphs conditioned on the value of "
-            "a tensor."
-        )
 
     @staticmethod
     def _to_tensor(value, dtype=None, name=None, as_ref=False):
@@ -276,7 +252,7 @@ class BayesianNet(Context):
 
     .. seealso::
 
-        :doc:`/concepts`
+        :doc:`/tutorials/concepts`
 
     :param observed: A dictionary of (string, Tensor) pairs, which maps from
         names of random variables to their observed values.
@@ -285,6 +261,7 @@ class BayesianNet(Context):
     def __init__(self, observed=None):
         self.observed = observed if observed else {}
         self._stochastic_tensors = OrderedDict()
+        super(BayesianNet, self).__init__()
 
     def _add_stochastic_tensor(self, s_tensor):
         """
@@ -300,6 +277,38 @@ class BayesianNet(Context):
         else:
             self._stochastic_tensors[s_tensor.name] = s_tensor
 
+    def _check_names_exist(self, name_or_names):
+        """
+        Check whether the stochastic tensors are in the network
+
+        :param name_or_names: A string or a list of strings. Names of
+            `StochasticTensor` s in the network.
+        :return: The validated name, or a tuple of the validated names.
+        """
+        if isinstance(name_or_names, six.string_types):
+            names = (name_or_names,)
+        else:
+            name_or_names = tuple(name_or_names)
+            names = name_or_names
+        for name in names:
+            if name not in self._stochastic_tensors:
+                raise ValueError("There is no StochasticTensor named '{}' in "
+                                 "the BayesianNet.".format(name))
+        return name_or_names
+
+    def get(self, name_or_names):
+        """
+        Get the `StochasticTensor` in the network by their names.
+
+        :param name_or_names: A string or a list of strings. Names of
+            `StochasticTensor` s in the network.
+        """
+        name_or_names = self._check_names_exist(name_or_names)
+        if isinstance(name_or_names, tuple):
+            return [self._stochastic_tensors[name] for name in name_or_names]
+        else:
+            return self._stochastic_tensors[name_or_names]
+
     def outputs(self, name_or_names):
         """
         Get the outputs of :class:`StochasticTensor` s by their names,
@@ -311,7 +320,8 @@ class BayesianNet(Context):
             `StochasticTensor` s in the network.
         :return: A Tensor or a list of Tensors.
         """
-        if isinstance(name_or_names, (tuple, list)):
+        name_or_names = self._check_names_exist(name_or_names)
+        if isinstance(name_or_names, tuple):
             return [self._stochastic_tensors[name].tensor
                     for name in name_or_names]
         else:
@@ -328,7 +338,8 @@ class BayesianNet(Context):
             `StochasticTensor` s in the network.
         :return: A Tensor or a list of Tensors.
         """
-        if isinstance(name_or_names, (tuple, list)):
+        name_or_names = self._check_names_exist(name_or_names)
+        if isinstance(name_or_names, tuple):
             ret = []
             for name in name_or_names:
                 s_tensor = self._stochastic_tensors[name]
@@ -358,6 +369,7 @@ class BayesianNet(Context):
 
         :return: Tuple of Tensors or a list of tuples of Tensors.
         """
+        name_or_names = self._check_names_exist(name_or_names)
         ret = []
         if outputs:
             ret.append(self.outputs(name_or_names))
@@ -365,7 +377,7 @@ class BayesianNet(Context):
             ret.append(self.local_log_prob(name_or_names))
         if len(ret) == 0:
             raise ValueError("No query options are selected.")
-        elif isinstance(name_or_names, (tuple, list)):
+        elif isinstance(name_or_names, tuple):
             return list(zip(*ret))
         else:
             return tuple(ret)
